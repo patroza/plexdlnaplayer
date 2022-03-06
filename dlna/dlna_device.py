@@ -1,17 +1,17 @@
+import asyncio
+import pprint
 import re
 import traceback
-
-import asyncio
-from urllib.parse import urlparse, urljoin
 from datetime import datetime, timedelta
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from aiohttp import ClientConnectorError
-
 from plex.adapters import remove_adapter
-from utils import xml2dict, UPNP_RC_SERVICE_TYPE, UPNP_AVT_SERVICE_TYPE, g
 from settings import settings
+from utils import UPNP_AVT_SERVICE_TYPE, UPNP_RC_SERVICE_TYPE, g, xml2dict
 
+pp = pprint.PrettyPrinter(indent=4)
 PAYLOAD_FMT = '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" ' \
               's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:{action} xmlns:u="{urn}">' \
               '{fields}</u:{action}></s:Body></s:Envelope>'
@@ -23,8 +23,19 @@ DEFAULT_ACTION_DATA = {
     "CurrentURIMetaData": "",
     "NextURIMetaData": "",
     "Unit": "REL_TIME",
-    "Speed": 1
+    "Speed": 1 # Necessary for play to start!
 }
+
+# TODO: video/MP2T
+CurrentURIMetaData="""&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;DIDL-Lite xmlns=&quot;urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/&quot; xmlns:dc=&quot;http://purl.org/dc/elements/1.1/&quot; xmlns:sec=&quot;http://www.sec.co.kr/&quot; xmlns:upnp=&quot;urn:schemas-upnp-org:metadata-1-0/upnp/&quot;&gt;
+   &lt;item id=&quot;f-0&quot; parentID=&quot;0&quot; restricted=&quot;0&quot;&gt;
+      &lt;dc:title&gt;Video&lt;/dc:title&gt;
+      &lt;dc:creator&gt;vGet&lt;/dc:creator&gt;
+      &lt;upnp:class&gt;object.item.videoItem&lt;/upnp:class&gt;
+      &lt;res protocolInfo=&quot;http-get:*:$$$MIME$$$:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000&quot; sec:URIType=&quot;public&quot;&gt;$$$URL$$$&lt;/res&gt;
+   &lt;/item&gt;
+&lt;/DIDL-Lite&gt;"""
 
 ERROR_COUNT_TO_REMOVE = 20
 
@@ -80,12 +91,24 @@ class DlnaDeviceService(object):
             for argument in args:
                 if argument.name in DEFAULT_ACTION_DATA.keys() and argument.name not in data.keys():
                     data[argument.name] = DEFAULT_ACTION_DATA[argument.name]
+
+        # print("**** dataaaa")
+        currentUri = data.get('CurrentURI')
+        if currentUri:
+            data['CurrentURIMetaData'] = CurrentURIMetaData.replace("$$$URL$$$", currentUri).replace("$$$MIME$$$", "video/MP2T") # TODO
+        # pp.pprint(data)
+        # print("**** dataaaa")
         payload = self.payload_from_template(action, data)
 
         try:
+            print("***** posting")
+            pp.pprint(self.control_url)
+            pp.pprint(payload.encode('utf8'))
+            pp.pprint(headers)
+            print("/***** posting")
             async with client.post(self.control_url, data=payload.encode('utf8'), headers=headers, timeout=5) as response:
                 if not response.ok:
-                    raise Exception(f"service {self.control_url} {action} {response.status_code} {await response.text()}")
+                    raise Exception(f"service {self.control_url} {action} {response.status} {await response.text()}")
                 self.device.repeat_error_count = 0
                 info = xml2dict(await response.text())
                 error = info.Envelope.Body.Fault.detail.UPnPError.get('errorDescription')
@@ -194,7 +217,7 @@ class DlnaDevice(object):
             url = urlparse(self.location_url)
             self.ip = url.hostname
             self.name = settings.dlna_name_alias(self.uuid, self.name, self.ip)
-            await self.get_volume_info()
+            # await self.get_volume_info()
             await asyncio.gather(*[s.get_spec() for s in self.services.values()])
 
     async def _find_service_by_action(self, action):

@@ -1,8 +1,12 @@
+import math
+import pprint
+
+from db import get_id
 from dotmap import DotMap
 from starlette.datastructures import URL, QueryParams
-import math
-
 from utils import g
+
+pp = pprint.PrettyPrinter(indent=4)
 
 UNLIMITED = math.inf
 
@@ -38,6 +42,11 @@ class PlayQueue(object):
             async with g.http.get(url, headers={"Accept": "application/json"}) as res:
                 res.raise_for_status()
                 self.info = DotMap((await res.json())['MediaContainer'])
+                the_key = self.info['Metadata'][0]['key']
+                # print("****** queue info")
+                # pp.pprint(self.info)
+                # pp.pprint(the_key)
+                # print("/****** queue info")
                 for idx, track in enumerate(await self.available_tracks()):
                     if track.playQueueItemID == await self.selected_item_id():
                         self.start_offset = await self.selected_offset() - idx
@@ -121,7 +130,16 @@ class PlayQueue(object):
                 break
 
     def url_for_track(self, track):
-        return self.plex_lib.build_url(track.Media[0].Part[0].key)
+        # print("$$$ url for track")
+        # print(str(track.Media[0].Part[0].key))
+        lib_key = track['key']
+        # TODO: exchange for the shortkey "/object/23875c1b896e5df98191/file.ts"
+        # pp.pprint(track['key'])
+        path = '/object/' + get_id(track['key']) + '/file.ts' # TODO: file name...
+        # print("awesome url " + path)
+        # print("$$$ url for track")
+        
+        return self.plex_lib.build_dlna_url(path)
 
     async def allow_shuffle(self):
         info = await self.get_info()

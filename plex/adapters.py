@@ -1,16 +1,18 @@
 import asyncio
-from datetime import timedelta, datetime
+import pprint
 import random
+from datetime import datetime, timedelta
 from threading import Thread, current_thread
 
 import aiohttp
 from dotmap import DotMap
+from settings import settings
 from starlette.datastructures import QueryParams
+from utils import convert_volume, g, parse_timedelta, pms_header
 
 from plex.play_queue import PlayQueue
-from utils import parse_timedelta, convert_volume, g, pms_header
-from settings import settings
 
+pp = pprint.PrettyPrinter(indent=4)
 adapters = {}
 
 
@@ -39,11 +41,18 @@ class PlexLib(object):
 
     def build_url(self, resource, token=True):
         url = f"{self.protocol}://{self.address}:{self.port}{resource}"
+        url = url.replace("https://192-168-178-55.5925ee7699e34715afe529ba36fc675a.plex.direct", "http://192.168.178.55") # TODO
+
         if token:
             if "?" in resource:
                 url += f"&X-Plex-Token={self.token}"
             else:
                 url += f"?X-Plex-Token={self.token}"
+        return url
+
+    def build_dlna_url(self, resource):
+        url = f"{self.protocol}://{self.address}:{self.port}{resource}"
+        url = url.replace("https://192-168-178-55.5925ee7699e34715afe529ba36fc675a.plex.direct:32400", "http://192.168.178.55:32469") # TODO
         return url
 
     def update(self, query: QueryParams):
@@ -386,6 +395,10 @@ class PlexDlnaAdapter(object):
             pass
 
     async def play_media(self, container_key, key=None, offset=0, paused=False, query_params: QueryParams = None):
+        # print("$$$$$")
+        # pp.pprint(container_key)
+        # pp.pprint(query_params)
+        # print("$$$$$")
         if query_params is not None:
             self.plex_lib.update(query_params)
         self.state.update(uri=None)
@@ -400,6 +413,10 @@ class PlexDlnaAdapter(object):
         url = self.queue.url_for_track(track)
         if url == self.state.current_uri:
             self.state.update(uri=None)
+        print("$$$$$")
+        ## /library/metadata/3603
+        pp.pprint(url)
+        print("$$$$$")
         await self.dlna.SetAVTransportURI(url)
         self.current_track_info = track
         if offset != 0:

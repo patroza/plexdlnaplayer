@@ -1,10 +1,11 @@
 import asyncio
+from datetime import datetime, timedelta
+
+from dlna import devices, get_device_by_uuid
+from settings import settings
+from utils import g, pms_header, subscriber_send_headers
 
 from plex.adapters import adapter_by_device
-from utils import subscriber_send_headers, pms_header, g
-from settings import settings
-from dlna import devices, get_device_by_uuid
-from datetime import datetime, timedelta
 
 TIMELINE_STOPPED = '<MediaContainer commandID="{command_id}">' \
                    '<Timeline type="music" state="stopped"/>' \
@@ -21,9 +22,10 @@ TIMELINE_DISCONNECTED = '<MediaContainer commandID="{command_id}" disconnected="
 
 
 CONTROLLABLE = 'playPause,stop,volume,shuffle,repeat,seekTo,skipPrevious,skipNext,stepBack,stepForward'
+#CONTROLLABLE = 'playPause,stop'
 
 TIMELINE_PLAYING = '<MediaContainer commandID="{command_id}"><Timeline controllable="' + CONTROLLABLE + '" ' \
-                   'type="music" {parameters}/><Timeline type="video" state="stopped"/><Timeline type="photo" ' \
+                   'type="video" {parameters}/><Timeline type="music" state="stopped"/><Timeline type="photo" ' \
                    'state="stopped"/></MediaContainer> '
 
 
@@ -123,7 +125,7 @@ class SubscribeManager(object):
         state = await adapter.get_state()
         if not state or state.get('state', None) is None:
             return TIMELINE_STOPPED
-        state['itemType'] = 'music'
+        state['itemType'] = 'video'
         xml = TIMELINE_PLAYING.format(parameters=" ".join([f'{k}="{v}"' for k, v in state.items()]),
                                       command_id="{command_id}")
         return xml
