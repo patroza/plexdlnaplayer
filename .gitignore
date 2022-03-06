@@ -2,3 +2,5 @@
 .python-version
 config
 __pycache__
+db/
+.DS_Store
