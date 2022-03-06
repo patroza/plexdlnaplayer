@@ -413,10 +413,10 @@ class PlexDlnaAdapter(object):
         url = self.queue.url_for_track(track)
         if url == self.state.current_uri:
             self.state.update(uri=None)
-        print("$$$$$")
-        ## /library/metadata/3603
-        pp.pprint(url)
-        print("$$$$$")
+        # print("$$$$$")
+        # ## /library/metadata/3603
+        # pp.pprint(url)
+        # print("$$$$$")
         await self.dlna.SetAVTransportURI(url)
         self.current_track_info = track
         if offset != 0:
