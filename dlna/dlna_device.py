@@ -101,11 +101,12 @@ class DlnaDeviceService(object):
         payload = self.payload_from_template(action, data)
 
         try:
-            print("***** posting")
-            pp.pprint(self.control_url)
-            pp.pprint(payload.encode('utf8'))
-            pp.pprint(headers)
-            print("/***** posting")
+            if action is not 'GetPositionInfo' and action is not 'GetTransportInfo':
+                print("***** posting")
+                pp.pprint(self.control_url)
+                pp.pprint(payload.encode('utf8'))
+                pp.pprint(headers)
+                print("/***** posting")
             async with client.post(self.control_url, data=payload.encode('utf8'), headers=headers, timeout=5) as response:
                 if not response.ok:
                     raise Exception(f"service {self.control_url} {action} {response.status} {await response.text()}")
