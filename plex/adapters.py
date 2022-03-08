@@ -180,12 +180,12 @@ class DlnaState(object):
         if check_count % state_check_count == 0 or self.state == "TRANSITIONING" or self.check_all_next_loop:
             checks.append(self.dlna.GetTransportInfo(client=client))
             results.append(state)
-        if check_count % volume_check_count == 0 or self.check_all_next_loop:
-            checks.append(self.dlna.GetVolume(client=client))
-            results.append(volume)
-        if check_count % muted_check_count == 0:
-            checks.append(self.dlna.GetMute(client=client))
-            results.append(muted)
+        # if check_count % volume_check_count == 0 or self.check_all_next_loop:
+        #     checks.append(self.dlna.GetVolume(client=client))
+        #     results.append(volume)
+        # if check_count % muted_check_count == 0:
+        #     checks.append(self.dlna.GetMute(client=client))
+        #     results.append(muted)
         if self.check_all_next_loop:
             self.check_all_next_loop = False
         try:
@@ -419,14 +419,22 @@ class PlexDlnaAdapter(object):
         # print("$$$$$")
         await self.dlna.SetAVTransportURI(url)
         self.current_track_info = track
-        if offset != 0:
-            await self.dlna.Seek(str(timedelta(milliseconds=offset)))
+
         if paused:
             await self.pause()
         else:
             await asyncio.sleep(1)
             if self.state != "PLAYING":
                 await self.play()
+
+        # if offset != 0:
+        #     print("!!!!offset not 0")
+        #     await self.seek(offset)
+        # else:
+        #     print("!!!!offset 0")
+        # TODO: Seek only when offset is not the same as current pos?
+        await self.seek(offset)
+
 
     async def refresh_queue(self, playQueueID):
         await self.queue.refresh_queue(playQueueID)
@@ -476,7 +484,26 @@ class PlexDlnaAdapter(object):
         await self.play_selected_queue_item()
 
     async def seek(self, offset):
-        await self.dlna.Seek(str(timedelta(milliseconds=offset)))
+        await self.try_seek(str(timedelta(milliseconds=offset)))
+
+        # dovi stops working after seek... so we have to stop and start.
+        # TODO: only when dovi video.
+        await asyncio.sleep(3)
+        await self.stop()
+        await asyncio.sleep(3)
+        await self.play()
+
+    async def try_seek(self, offset):
+        for i in range(0,15):
+            # try:
+            if not await self.dlna.Seek(str(timedelta(milliseconds=offset))):
+                await asyncio.sleep(1)
+                continue
+            # except:
+            #     print("!!!!except")
+            #     await asyncio.sleep(1)
+            #     continue
+            break
 
     async def get_elapsed(self):
         position_info = await self.dlna.GetPositionInfo()
