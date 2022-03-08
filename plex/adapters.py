@@ -433,6 +433,7 @@ class PlexDlnaAdapter(object):
         # else:
         #     print("!!!!offset 0")
         # TODO: Seek only when offset is not the same as current pos?
+        await asyncio.sleep(10)
         await self.seek(offset)
 
 
@@ -484,19 +485,24 @@ class PlexDlnaAdapter(object):
         await self.play_selected_queue_item()
 
     async def seek(self, offset):
-        await self.try_seek(str(timedelta(milliseconds=offset)))
+        # move back 15 seconds to allow for the restart mumbo jumbo
+        if offset > 15000:
+            offset = offset - 15000
+        else:
+            offset = 0
+        await self.do_seek(offset)
 
         # dovi stops working after seek... so we have to stop and start.
         # TODO: only when dovi video.
-        await asyncio.sleep(3)
+        await asyncio.sleep(10)
         await self.stop()
-        await asyncio.sleep(3)
+        await asyncio.sleep(10)
         await self.play()
 
     async def try_seek(self, offset):
         for i in range(0,15):
             # try:
-            if not await self.dlna.Seek(str(timedelta(milliseconds=offset))):
+            if not await self.do_seek(offset):
                 await asyncio.sleep(1)
                 continue
             # except:
@@ -504,6 +510,9 @@ class PlexDlnaAdapter(object):
             #     await asyncio.sleep(1)
             #     continue
             break
+
+    def do_seek(self, offset):
+        return self.dlna.Seek(str(timedelta(milliseconds=offset)))
 
     async def get_elapsed(self):
         position_info = await self.dlna.GetPositionInfo()
