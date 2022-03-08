@@ -101,7 +101,7 @@ class DlnaDeviceService(object):
         payload = self.payload_from_template(action, data)
 
         try:
-            if action is not 'GetPositionInfo' and action is not 'GetTransportInfo':
+            if action != 'GetPositionInfo' and action != 'GetTransportInfo':
                 print("***** posting")
                 pp.pprint(self.control_url)
                 pp.pprint(payload.encode('utf8'))
