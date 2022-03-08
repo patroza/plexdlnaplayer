@@ -92,11 +92,27 @@ def timeline_poll_headers(device):
         'Content-Type': 'text/xml;charset=utf-8'
     }
 
+import re
+from datetime import timedelta
 
-def parse_timedelta(s):
-    t = datetime.strptime(s, "%H:%M:%S")
-    delta = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
-    return delta
+def parse_timedelta(value):
+    """
+    convert input string to timedelta
+    """
+    value = re.sub(r"[^0-9:]", "", value)
+    if not value:
+        return
+
+    return timedelta(**{key:float(val)
+                        for val, key in zip(value.split(":")[::-1], 
+                                            ("seconds", "minutes", "hours", "days"))
+               })
+
+
+# def parse_timedelta(s):
+#     t = datetime.strptime(s, "%H:%M:%S")
+#     delta = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+#     return delta
 
 
 def convert_volume(value: int, from_max: int, from_min: int, to_max: int, to_min: int, to_step: int):
