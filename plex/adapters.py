@@ -427,14 +427,14 @@ class PlexDlnaAdapter(object):
             if self.state != "PLAYING":
                 await self.play()
 
-        # if offset != 0:
-        #     print("!!!!offset not 0")
-        #     await self.seek(offset)
+        if offset != 0:
+            await asyncio.sleep(10)
+            await self.seek(offset)
         # else:
         #     print("!!!!offset 0")
         # TODO: Seek only when offset is not the same as current pos?
-        await asyncio.sleep(10)
-        await self.seek(offset)
+        #await asyncio.sleep(10)
+        #await self.seek(offset)
 
 
     async def refresh_queue(self, playQueueID):
@@ -490,7 +490,10 @@ class PlexDlnaAdapter(object):
             offset = offset - 15000
         else:
             offset = 0
+
         await self.do_seek(offset)
+        await asyncio.sleep(1)
+        await self.pause()
 
         # dovi stops working after seek... so we have to stop and start.
         # TODO: only when dovi video.
